@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title> Lyrics Generator</title>
+
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Orbitron:wght@700&family=Poppins:wght@700&family=Oswald&family=Raleway&family=Montserrat&family=Playfair+Display&family=Permanent+Marker&family=Rubik&family=Teko&family=Lobster&family=Exo:wght@700&family=Cinzel:wght@700&family=Comfortaa&family=Fredoka&family=Quicksand&family=Signika&family=Alfa+Slab+One&family=Pacifico&display=swap" rel="stylesheet">
+
+<style>
+body{
+background:#111;
+color:white;
+font-family:Poppins;
+text-align:center;
+margin:0;
+padding:10px;
+}
+textarea{
+width:90%;
+height:120px;
+margin:10px;
+padding:12px;
+border-radius:12px;
+border:none;
+font-size:16px;
+background:#1a1a1a;
+color:#fff;
+box-shadow:0 4px 12px rgba(0,0,0,0.5);
+}
+textarea:focus{outline:none;box-shadow:0 0 10px #ff0055,0 0 20px #6a00ff;}
+
+select,input[type=color],input[type=range]{
+margin:5px;padding:6px 10px;border-radius:8px;border:none;font-size:14px;background:#222;color:#fff;
+box-shadow:0 2px 6px rgba(0,0,0,0.5);
+transition:0.3s;
+}
+select:hover,input:hover{box-shadow:0 0 8px #ff0055,0 0 16px #6a00ff;}
+
+button{
+padding:12px 18px;margin:6px;border:none;border-radius:12px;cursor:pointer;
+background:linear-gradient(45deg,#ff0055,#6a00ff,#00c3ff,#ff8800);
+color:white;font-weight:bold;font-size:14px;transition:0.3s;
+box-shadow:0 4px 14px rgba(0,0,0,0.6);
+}
+button:hover{transform:scale(1.05);box-shadow:0 6px 20px rgba(0,0,0,0.8),0 0 20px #ff0055,0 0 40px #6a00ff;}
+
+#previewBox{
+width:360px;height:640px;margin:20px auto;position:relative;
+display:flex;flex-direction:column;align-items:center;justify-content:center;
+padding:20px;border-radius:20px;overflow:hidden;background:#000;
+}
+
+.line{
+position:absolute;width:90%;font-weight:bold;transition:all 0.5s ease;
+}
+
+canvas{display:none;}
+</style>
+</head>
+<body>
+
+<h2> Lyrics Generator</h2>
+
+<textarea id="lyrics" placeholder="Write lyrics line by line..."></textarea><br>
+
+<select id="fontFamily">
+<option>Anton</option><option>Bebas Neue</option><option>Orbitron</option>
+<option>Poppins</option><option>Oswald</option><option>Raleway</option>
+<option>Montserrat</option><option>Playfair Display</option>
+<option>Permanent Marker</option><option>Rubik</option>
+<option>Teko</option><option>Lobster</option><option>Exo</option>
+<option>Cinzel</option><option>Comfortaa</option>
+<option>Fredoka</option><option>Quicksand</option>
+<option>Signika</option><option>Alfa Slab One</option>
+<option>Pacifico</option>
+</select>
+
+<input type="color" id="fontColor" value="#ffffff">
+<input type="color" id="bgColor" value="#000000">
+<input type="range" id="fontSize" min="30" max="120" value="60">
+
+<br>
+
+<select id="position">
+<option value="center">Center</option>
+<option value="top">Top</option>
+<option value="bottom">Bottom</option>
+<option value="left">Left</option>
+<option value="right">Right</option>
+</select>
+
+<select id="align">
+<option value="center">Center Align</option>
+<option value="left">Left Align</option>
+<option value="right">Right Align</option>
+</select>
+
+<label>Stroke <input type="checkbox" id="stroke"></label>
+<label>Shadow <input type="checkbox" id="shadow"></label>
+<label>Gradient <input type="checkbox" id="gradient"></label>
+
+<br>
+<label>Upload Background Image: <input type="file" id="bgUpload" accept="image/*"></label>
+
+<br>
+<button onclick="prev()">⬅ Prev</button>
+<button onclick="next()">Next ➡</button>
+<button onclick="downloadImage()">📸 Download PNG</button>
+
+<div id="previewBox">
+<div id="line1" class="line"></div>
+<div id="line2" class="line"></div>
+</div>
+
+<canvas id="canvas" width="1080" height="1920"></canvas>
+
+<script>
+let pairs=[],current=0,bgImg=null;
+const lyrics=document.getElementById("lyrics"),
+fontFamily=document.getElementById("fontFamily"),
+fontColor=document.getElementById("fontColor"),
+bgColor=document.getElementById("bgColor"),
+fontSize=document.getElementById("fontSize"),
+position=document.getElementById("position"),
+align=document.getElementById("align"),
+stroke=document.getElementById("stroke"),
+shadow=document.getElementById("shadow"),
+gradient=document.getElementById("gradient"),
+bgUpload=document.getElementById("bgUpload"),
+previewBox=document.getElementById("previewBox"),
+line1=document.getElementById("line1"),
+line2=document.getElementById("line2"),
+canvas=document.getElementById("canvas");
+
+bgUpload.addEventListener("change",e=>{
+const file=e.target.files[0];
+if(file){
+const reader=new FileReader();
+reader.onload=function(ev){bgImg=new Image(); bgImg.src=ev.target.result;}
+reader.readAsDataURL(file);
+}
+});
+
+function buildPairs(){
+const lines=lyrics.value.split("\n").filter(l=>l.trim()!="");
+pairs=[];
+for(let i=0;i<lines.length;i+=2)pairs.push([lines[i]||"",lines[i+1]||""]);
+if(current>=pairs.length) current=0;
+updatePreview();
+}
+
+function updatePreview(){
+if(pairs.length==0){line1.innerText="";line2.innerText="";return;}
+
+previewBox.style.background=bgImg?`url(${bgImg.src}) center/cover no-repeat`:bgColor.value;
+
+[line1,line2].forEach(l=>{
+l.style.fontFamily=fontFamily.value;
+l.style.fontSize=fontSize.value+"px";
+l.style.textAlign=align.value;
+l.style.webkitTextStroke=stroke.checked?"2px black":"0px";
+l.style.textShadow=shadow.checked?"0 0 10px #ff0055,0 0 20px #6a00ff":"none";
+l.style.left="50%";l.style.transform="translateX(-50%)";
+});
+
+if(gradient.checked){
+line1.style.background=line2.style.background="linear-gradient(90deg,#ff0055,#6a00ff,#00c3ff,#ff8800)";
+line1.style.webkitBackgroundClip=line2.style.webkitBackgroundClip="text";
+line1.style.webkitTextFillColor=line2.style.webkitTextFillColor="transparent";
+}else{
+line1.style.color=line2.style.color=fontColor.value;
+}
+
+if(position.value=="center"){line1.style.top="45%";line2.style.top="55%";}
+if(position.value=="top"){line1.style.top="10%";line2.style.top="20%";}
+if(position.value=="bottom"){line1.style.top="70%";line2.style.top="80%";}
+if(position.value=="left"){line1.style.left=line2.style.left="5%";line1.style.transform=line2.style.transform="none";line1.style.top="45%";line2.style.top="55%";}
+if(position.value=="right"){line1.style.right=line2.style.right="5%";line1.style.left=line2.style.left="auto";line1.style.transform=line2.style.transform="none";line1.style.top="45%";line2.style.top="55%";}
+
+line1.innerText=pairs[current][0];
+line2.innerText=pairs[current][1];
+}
+
+function next(){if(current<pairs.length-1){current++;updatePreview();}}
+function prev(){if(current>0){current--;updatePreview();}}
+
+function downloadImage(){
+if(pairs.length==0) return;
+const ctx=canvas.getContext("2d");
+if(bgImg) ctx.drawImage(bgImg,0,0,canvas.width,canvas.height);
+else{ctx.fillStyle=bgColor.value;ctx.fillRect(0,0,canvas.width,canvas.height);}
+ctx.textAlign="center";
+ctx.font=fontSize.value+"px "+fontFamily.value;
+if(gradient.checked){
+const grad=ctx.createLinearGradient(0,0,canvas.width,0);
+grad.addColorStop(0,"#ff0055");grad.addColorStop(0.33,"#6a00ff");grad.addColorStop(0.66,"#00c3ff");grad.addColorStop(1,"#ff8800");
+ctx.fillStyle=grad;
+}else ctx.fillStyle=fontColor.value;
+if(stroke.checked){ctx.lineWidth=2;ctx.strokeStyle="black";ctx.strokeText(pairs[current][0],540,900);ctx.strokeText(pairs[current][1],540,1100);}
+ctx.fillText(pairs[current][0],540,900);
+ctx.fillText(pairs[current][1],540,1100);
+const link=document.createElement("a");
+link.download="lyrics_"+(current+1)+".png";
+link.href=canvas.toDataURL();
+link.click();
+}
+
+[lyrics,fontFamily,fontColor,bgColor,fontSize,position,align,stroke,shadow,gradient].forEach(el=>el.addEventListener("input",buildPairs));
+lyrics.addEventListener("input",buildPairs);
+buildPairs();
+</script>
+
+</body>
+</html>
